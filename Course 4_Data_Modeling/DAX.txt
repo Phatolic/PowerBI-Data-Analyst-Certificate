@@ -1,0 +1,213 @@
+VDAX:
+- Annial Sales Summary = ADDCOLUMNS (
+	SUMMARIZE(Sales, 'Date'[Year], Products[Category]
+), "Total Quanity", CALCULATE(SUM (Sales[Quantity])))
+
+- Calculate the sales growth as an annual percentage:
+Sales YoY Growth % = 
+DIVIDE (( 
+    [Sales] - CALCULATE ( [Sales], 
+    PARALLELPERIOD ( 'Date'[ADate], -12, MONTH ) )), 
+    CALCULATE ( [Sales], 
+    PARALLELPERIOD ( 'Date'[Date], -12, MONTH ) ))
+
+Sales YoY Growth % = VAR SalesPriorYear = 
+CALCULATE ( [Sales], 
+PARALLELPERIOD ( 'Date'[Date], -12, MONTH ) )
+RETURN 
+DIVIDE ( ( [Sales] - SalesPriorYear ), SalesPriorYear )
+
+-Calculates the total sales of blue-colored products for 2018.
+Total Revenue =
+CALCULATE 
+( SUM ( Sales[Revenue] ),
+FILTER ( Sales, Sales[OrderDate] = 2018 
+&& 
+Sales[Product Color] = "Blue" ))
+
+
+---------
+CALCULATE WITH FILTER
+
+- Syntax : CALCULATE (<expression> [<filter1> [<filter2>]])
+
+EX:
+	Bike Sales = CALCULATE([Total Sales], Products[Category] = "Bikes")
+	Sales of blue products = CALCULATE (Sales[Total Sales], Products[Color] = "Blue")
+	Sales of blue products in USA = CALCULATE (Sales[Total Sales], 
+						Products[Color] = "Blue",
+						Region[Country] = "United States"
+						)
++ Boolean filter expressions 
+The total sales of high-end products, defined as products whose unit price is equal to or greater than $500:
+
+Sales of high-end products =
+CALCULATE (
+    SUM ( Sales[Total Sales] ),
+    FILTER ( Products, Products[Unit Price] >= 500 )
+)
+
++Table filter expressions
+2019 Sales in Germany =
+CALCULATE (
+    SUM ( [Total Sales] ),
+    FILTER ( Region[Country] = "Germany", Date[Year] = "2019" )
+)
+
++ REMOVEFILTERS
+The REMOVEFILTERS function is used to remove all filters or remove filters from one or more columns of a table or all columns of a single table.
+
+For example, a Product and Region filter has been applied to the tables in theAdventure Worksdatabase.You want to analyze the company’s total sales without any filters applied to the Sales table. You can write a DAX expression as follows:
+
+Total Sales = 
+CALCULATE 
+( 
+    [Total Sales], 
+    REMOVEFILTERS ( Product ), 
+    REMOVEFILTERS ( Region) 
+)
+
+
+-> REMOVEFILTERS eliminates all filters from the tables specified within the parentheses. In this case, it removes filters from the Product and Region dimensions.
+
++ KEEPFILTERS
+KEEPFILTERS adds a filter without removing existing filters on the same columns. In other words, you can keep the existing filters and still evaluate the expression.
+
+For example, Adventure Works must calculate its total sales while keeping the existing color filter on the Product table. The required DAX expression is as follows: 
+
+Blue Products Sale = 
+CALCULATE 
+( 
+    [Total Sales], 
+    KEEPFILTERS ( Products[Color] = "Blue" ) 
+)
+
+-> If an existing active filter exists on Product[Color], then KEEPFILTERS ensures the filter is not overridden. Instead, it is merged with the new filter. 
+
++ ALL 
+This function acts in an equivalent way to REMOVEFILTERS.
+
+For example, Adventure Works can use the ALL function to calculate total sales for every region as follows:
+In this formula, the ALL function returns the required results as a table or a column, which can be used in other DAX functions. REMOVEFILTERS does not return a table or column. Instead, it just removes filters from the specified tables or columns.
+
++ The CROSSFILTER function:  modifies the filter direction (from Both to Single, or from Single to Both). It can also be used to disable a relationship between tables.
+
+Adventure Works wants to analyze its total number of products by a specific year. However, the default cross-filter direction of the data model does not allow the company to compute the value. So, Adventure Works can create a measure using DAX without changing the default cross-filter direction in the data model as follows:
+
+Product by Year =
+CALCULATE 
+(
+    DISTINCTCOUNT ( Products[ProductKey] ),
+    CROSSFILTER 
+        ( Sales[ProductKey], 
+        Products[ProductKey], 
+        BOTH 
+     )
+)
+
+
+--------------
+USERELATIONSHIP
+- Total Sales (Shipping Date) = CALCULATE (
+				SUM(Sales[Sales Amount]), 								RELATIONSHIP(Sales[ShippingDate], Date[Date]) )
+
+- August Sales by Shipping date =
+CALCULATE 
+(
+    SUM(Sales[Sales Amount]),
+    FILTER(Date, Date[Month] = "August"),
+    USERELATIONSHIP(Sales[Shipping Date], Date[Date])	
+)
+
+-----------------
+*** TIME CALCULATIONS
++++ Summarization over time
+- TOTALYTD
+TOTALYTD (
+	<expression>, <dates>,
+	[<filter>] [<year_end_date>]
+)
+Example: Sales_YTD = TOTALYTD (
+				SUM
+				(Sales[Total Sales]),
+				Sales[OrderDate].[Date]
+)
+
+- DATES[YMQ]TD(
+	<dates>
+	[<year_end_date>]
+)
+-> Return a RUNNING TOTAL single column table
+
+Example:
+Sales_YTD method 2 = CALCULATE (
+			SUM
+			(Sales[Total Sales]),
+			DATESYTD(Sales[OrderDate].[Date])
+)
+
+- DATESBETWEEN: Return a table contains all dates
+DATESBETWEEN (
+	<Dates>,
+	<StartDate>,
+	<EndDate>
+)
+
+Example: 
+Summer Sales = Calculate( SUM (Sales'[Total Sales]),
+			DATESBETWEEN (
+				'Sales'[OrderDate],
+				DATE(2023,6,1),	
+				DATE(2023,8,31),
+)					
+)
+
+----------
+DAX comparision function syntax: Return a table
+Function_name
+(
+	argument_one,
+	argument_two
+)
+
+-SAMEPERIODLASTYEAR
+Revenue PY = 
+	VAR RevenuePreviousYear = 
+	 CALCULATE (
+	  [Revenue], SAMEPERIODLASTYEAR (Sales[OrderDate].[Date])
+	RETURN RevenuePreviousYear		
+)
+
+Revenue YoY% =
+	VAR RevenuePreviousYear = 
+	CALCULATE (
+	  [Revenue], SAMEPERIODLASTYEAR (Sales[OrderDate].[Date])
+	RETURN 
+	  DIVIDE ([Revenue] - RevenuePreviousYear, RevenuePreviuousYear)
+
+-DATEADD
+
+DATEADD (
+	<dates>,
+	<number_of_intervals>,
+	<interval>
+)
+
+Example:
+Sales comparison = 
+	CALCULATE (
+	[Revenue],
+	DATEADD (Sales[OrderDate].[Date], -1 , MONTH)
+)
+
+
+---------
+CALENDAR and CALENDARAUTO functions: Create DATE dimensions in data models
+
+Date = CALENDAR (
+	DATE (2017, 1,1),
+	DATE (2021,12,31)
+)
+
+Date = 
+CALENDARAUTO([fiscal_year_end_month]): if == 3 it will return March as end month, default is December

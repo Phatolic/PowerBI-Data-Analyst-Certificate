@@ -1,0 +1,11 @@
+Optimize power bi:
+Identify and remove unnecessary columns.
+
+Categorize the data.
+
+Adjust data types for memory efficiency.
+
+Disable the Auto date/time feature when it’s not beneficial.
+
+Modify cardinality - relationships(use groupby in Power Query)
+
